@@ -3,6 +3,7 @@ module Evaluator (evaluate) where
 import qualified Data.Map as M
 import Lexer (Operator (..))
 import Parser (Tree (..))
+import Binder (bindE, pass, underachieve)
   
 -- Evaluator --
 type SymTab = M.Map String Double
@@ -46,15 +47,3 @@ addSymbol :: String -> Double -> SymTab -> (Double, SymTab)
 addSymbol str val symTab =
   let symTab' = M.insert str val symTab
   in (val, symTab')
-
-bindE :: Either String a -> (a -> Either String a) -> Either String a
-bindE ev k = 
-  case ev of 
-    Left msg -> Left msg
-    Right v -> k v
-
-pass :: a -> Either String a
-pass x = Right x
-
-underachieve :: String -> Either String a
-underachieve msg = Left msg
