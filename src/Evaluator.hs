@@ -3,45 +3,45 @@ module Evaluator (evaluate) where
 import qualified Data.Map as M
 import Lexer (Operator (..))
 import Parser (Tree (..))
-import Binder (bindE, pass, underachieve)
+import Binder (Binder (..))
   
 -- Evaluator --
 type SymTab = M.Map String Double
 
-evaluate :: Tree -> SymTab -> Either String (Double, SymTab)
+evaluate :: Tree -> SymTab -> Binder (Double, SymTab)
 evaluate (SumNode op left right) symTab =
-  bindE (evaluate left symTab) (\(x, symTab') -> 
-    bindE (evaluate right symTab') (\(y, symTab'') ->
+  evaluate left symTab >>= (\(x, symTab') -> 
+    evaluate right symTab' >>= (\(y, symTab'') ->
       case op of
-        Plus -> pass (x + y, symTab'')
-        Minus -> pass (x - y, symTab'')))
+        Plus -> return (x + y, symTab'')
+        Minus -> return (x - y, symTab'')))
 
 evaluate (ProdNode op left right) symTab =
-  bindE (evaluate left symTab) (\(x, symTab') ->
-    bindE (evaluate right symTab') (\(y, symTab'') -> 
+  evaluate left symTab >>= (\(x, symTab') ->
+    evaluate right symTab' >>= (\(y, symTab'') -> 
       case op of 
-        Times -> pass (x * y, symTab'')
-        Div -> pass (x / y, symTab'')))
+        Times -> return (x * y, symTab'')
+        Div -> return (x / y, symTab'')))
 
 evaluate (UnaryNode op tree) symTab = 
-  bindE (evaluate tree symTab) (\(x, symTab')
+  evaluate tree symTab >>= (\(x, symTab')
     -> case op of
-      Plus -> pass (x, symTab')
-      Minus -> pass (-x, symTab'))
+      Plus -> return (x, symTab')
+      Minus -> return (-x, symTab'))
 
-evaluate (NumNode x) symTab = pass (x, symTab)
+evaluate (NumNode x) symTab = return (x, symTab)
 
 evaluate (AssignNode str tree) symTab = 
-  bindE (evaluate tree symTab) (\(x, symTab') ->
-    pass (addSymbol str x symTab'))
+  evaluate tree symTab >>= (\(x, symTab') ->
+    return (addSymbol str x symTab'))
 
 evaluate (VarNode str) symTab = lookUp str symTab
 
-lookUp :: String -> SymTab -> Either String (Double, SymTab)
+lookUp :: String -> SymTab -> Binder (Double, SymTab)
 lookUp str symTab = 
   case M.lookup str symTab of 
-    Just v -> pass (v, symTab)
-    Nothing -> underachieve $ "Undefined variable " ++ str
+    Just v -> return (v, symTab)
+    Nothing -> fail $ "Undefined variable " ++ str
 
 addSymbol :: String -> Double -> SymTab -> (Double, SymTab)
 addSymbol str val symTab =

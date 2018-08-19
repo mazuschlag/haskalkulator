@@ -1,7 +1,7 @@
 module Parser (Tree (..), parse) where
 
 import Lexer (Token (..), Operator (..))
-import Binder (bindE, pass, underachieve)
+import Binder (Binder (..))
 
 -- Parser --
 data Tree = SumNode Operator Tree Tree
@@ -13,56 +13,56 @@ data Tree = SumNode Operator Tree Tree
           | EndParse
   deriving (Show)
 
-parse :: [Token] -> Either String Tree
+parse :: [Token] -> Binder Tree
 parse toks = 
   case expression toks of
-    Left msg -> underachieve msg
-    Right (tree, toks') ->
+    Bind (Left msg) -> fail msg
+    Bind (Right (tree, toks')) ->
       if null toks'
-        then pass tree
-        else underachieve $ "Unable to parse tokens " ++ show toks'
+        then return tree
+        else fail $ "Unable to parse tokens " ++ show toks'
 
-expression :: [Token] -> Either String (Tree, [Token])
-expression toks = bindE (term toks) (\(termTree, toks') ->
+expression :: [Token] -> Binder (Tree, [Token])
+expression toks = term toks >>= (\(termTree, toks') ->
   case peek toks' of
     -- Term [+-] Expression
     (TokOp op) | elem op [Plus, Minus] -> 
-      bindE (expression (accept toks')) (\(exTree, toks'') -> 
-        pass (SumNode op termTree exTree, toks''))
+      expression (accept toks') >>= (\(exTree, toks'') -> 
+        return (SumNode op termTree exTree, toks''))
     -- Identifier '=' Expression
     TokAssign -> 
       case termTree of 
         VarNode str ->
-          bindE (expression (accept toks')) (\(exTree, toks'') -> 
-            pass (AssignNode str exTree, toks''))
-        _ -> underachieve "Only variables can be assigned to"
+          expression (accept toks') >>= (\(exTree, toks'') -> 
+            return (AssignNode str exTree, toks''))
+        _ -> fail "Only variables can be assigned to"
     -- Term
-    _ -> pass (termTree, toks'))
+    _ -> return (termTree, toks'))
 
-term :: [Token] -> Either String (Tree, [Token])
-term toks = bindE (factor toks) (\(facTree, toks') ->
+term :: [Token] -> Binder (Tree, [Token])
+term toks = factor toks >>= (\(facTree, toks') ->
   -- Factor [*/] Term
   case peek toks' of
     (TokOp op) | elem op [Times, Div] ->
-      bindE (term . accept $ toks') (\(termTree, toks'') ->
-          pass (ProdNode op facTree termTree, toks''))
+      (term . accept $ toks') >>= (\(termTree, toks'') ->
+          return (ProdNode op facTree termTree, toks''))
     -- Factor
-    _ -> pass (facTree, toks'))
+    _ -> return (facTree, toks'))
 
-factor :: [Token] -> Either String (Tree, [Token])
+factor :: [Token] -> Binder (Tree, [Token])
 factor toks = 
   case peek toks of 
-    (TokNum x)     -> pass (NumNode x, accept toks)
-    (TokIdent str) -> pass (VarNode str, accept toks)
+    (TokNum x)     -> return (NumNode x, accept toks)
+    (TokIdent str) -> return (VarNode str, accept toks)
     (TokOp op) | elem op [Plus, Minus] -> 
-      bindE (factor . accept $ toks) (\(facTree, toks') ->
-        pass (UnaryNode op facTree, toks'))
-    TokLParen      -> bindE (expression . accept $ toks) (\(expTree, toks') ->
+      (factor . accept $ toks) >>= (\(facTree, toks') ->
+        return (UnaryNode op facTree, toks'))
+    TokLParen      -> (expression . accept $ toks) >>= (\(expTree, toks') ->
       if peek toks' /= TokRParen
-      then underachieve "Missing right parenthesis"
-      else pass (expTree, accept toks'))
-    TokError -> underachieve $ "Unexpected end of input"
-    _  -> underachieve $ "Parse error on token " ++ (show . peek $ toks)
+      then fail "Missing right parenthesis"
+      else return (expTree, accept toks'))
+    TokError -> fail $ "Unexpected end of input"
+    _  -> fail $ "Parse error on token " ++ (show . peek $ toks)
 
 
 peek :: [Token] -> Token

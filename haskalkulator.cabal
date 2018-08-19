@@ -2,7 +2,7 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: bb4bc30e9b1eb46092b42783df646c58666381147adbb1f8b4c7bec41744ce4b
+-- hash: 0230241eccf09b6519139b24c97114d29d07510fefb18bba6d80a5c7df89444d
 
 name:           haskalkulator
 version:        0.1.0.0
@@ -37,6 +37,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
+    , mtl
   default-language: Haskell2010
 
 executable haskalkulator
@@ -50,6 +51,7 @@ executable haskalkulator
       base >=4.7 && <5
     , containers
     , haskalkulator
+    , mtl
   default-language: Haskell2010
 
 test-suite haskalkulator-test
@@ -64,4 +66,5 @@ test-suite haskalkulator-test
       base >=4.7 && <5
     , containers
     , haskalkulator
+    , mtl
   default-language: Haskell2010

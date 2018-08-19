@@ -1,7 +1,7 @@
 module Lexer (Operator (..), Token (..), tokenize) where
 
 import Data.Char
-import Binder (bindE, pass, underachieve)
+import Binder (Binder (..))
 
 -- Tokenizer --
 data Token = TokLParen
@@ -17,25 +17,25 @@ data Token = TokLParen
 data Operator = Plus | Minus | Times | Div
   deriving (Show, Eq)
 
-tokenize :: String -> Either String [Token]
-tokenize [] = pass []
+tokenize :: String -> Binder [Token]
+tokenize [] = return []
 tokenize (c : cs)
-  | elem c "+-*/" = bindE (tokenize cs) (\toks -> pass (TokOp (operator c) : toks))
-  | c == '='      = bindE (tokenize cs) (\toks -> pass (TokAssign : toks))
-  | c == '('      = bindE (tokenize cs) (\toks -> pass (TokLParen : toks))
-  | c == ')'      = bindE (tokenize cs) (\toks -> pass (TokRParen : toks))
+  | elem c "+-*/" = tokenize cs >>= (\toks -> return (TokOp (operator c) : toks))
+  | c == '='      = tokenize cs >>= (\toks -> return (TokAssign : toks))
+  | c == '('      = tokenize cs >>= (\toks -> return (TokLParen : toks))
+  | c == ')'      = tokenize cs >>= (\toks -> return (TokRParen : toks))
   | isDigit c     = number c cs
   | isAlpha c     = identifier c cs
   | isSpace c     = tokenize cs
-  | otherwise     = underachieve $ "Cannot tokenize " ++ [c]
+  | otherwise     = fail $ "Cannot tokenize " ++ [c]
 
-number :: Char -> String -> Either String [Token]
+number :: Char -> String -> Binder [Token]
 number c cs = let (str, cs') = span isDigit cs in 
-              bindE (tokenize cs') (\toks -> pass (TokNum (read (c:str)) : toks))
+              tokenize cs' >>= (\toks -> return (TokNum (read (c:str)) : toks))
 
-identifier :: Char -> String -> Either String [Token]
+identifier :: Char -> String -> Binder [Token]
 identifier c cs = let (str, cs') = span isAlphaNum cs in 
-                  bindE (tokenize cs') (\toks -> pass (TokIdent (c:str) : toks))
+                  tokenize cs' >>= (\toks -> return (TokIdent (c:str) : toks))
 
 opToChar :: Operator -> Char
 opToChar Plus = '+'

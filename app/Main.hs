@@ -4,6 +4,7 @@ import qualified Data.Map as M
 import Lexer (tokenize)
 import Parser (parse)
 import Evaluator (evaluate)
+import Binder (Binder (..))
 
 main :: IO ()
 main = do
@@ -15,19 +16,19 @@ main = do
         then return ()
       else
         case tokenize str of 
-          Left msg -> do
+          Bind (Left msg) -> do
             putStrLn $ "Error: " ++ msg
             loop symTab
-          Right toks -> do
+          Bind (Right toks) -> do
             case parse toks of 
-              Left msg -> do
+              Bind (Left msg) -> do
                 putStrLn $ "Error: " ++ msg
                 loop symTab
-              Right tree -> do
+              Bind (Right tree) -> do
                 case evaluate tree symTab of
-                  Left msg -> do
+                  Bind (Left msg) -> do
                     putStrLn $ "Error: " ++ msg
                     loop symTab
-                  Right (val, symTab') -> do
+                  Bind (Right (val, symTab')) -> do
                     print val
                     loop symTab'
