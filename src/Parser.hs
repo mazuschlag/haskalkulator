@@ -1,6 +1,7 @@
 module Parser (Tree (..), parse) where
 
 import Lexer (Token (..), Operator (..))
+import Binder (bindE, pass, underachieve)
 
 -- Parser --
 data Tree = SumNode Operator Tree Tree
@@ -9,68 +10,65 @@ data Tree = SumNode Operator Tree Tree
           | UnaryNode Operator Tree
           | NumNode Double
           | VarNode String
+          | EndParse
   deriving (Show)
 
-parse :: [Token] -> Tree
+parse :: [Token] -> Either String Tree
 parse toks = 
-  let (tree, toks') = expression toks
-  in 
-    if null toks'
-    then tree
-    else error $ "Leftover tokens: " ++ show toks'
+  case expression toks of
+    Left msg -> underachieve msg
+    Right (tree, toks') ->
+      if null toks'
+        then pass tree
+        else underachieve $ "Unable to parse tokens " ++ show toks'
 
-expression :: [Token] -> (Tree, [Token])
-expression toks =
-  let (termTree, toks') = term toks 
-  in 
-    case lookAhead toks' of
-      -- Term [+-] Expression
-      (TokOp op) | elem op [Plus, Minus] -> 
-        let (exTree, toks'') = expression (accept toks')
-        in (SumNode op termTree exTree, toks'') 
-      -- Identifier '=' Expression
-      TokAssign -> 
-        case termTree of 
-          VarNode str ->
-            let (exTree, toks'') = expression (accept toks')
-            in (AssignNode str exTree, toks'')
-          _ -> error "Only variables can be assigned to"
-      -- Term
-      _ -> (termTree, toks')
+expression :: [Token] -> Either String (Tree, [Token])
+expression toks = bindE (term toks) (\(termTree, toks') ->
+  case peek toks' of
+    -- Term [+-] Expression
+    (TokOp op) | elem op [Plus, Minus] -> 
+      bindE (expression (accept toks')) (\(exTree, toks'') -> 
+        pass (SumNode op termTree exTree, toks''))
+    -- Identifier '=' Expression
+    TokAssign -> 
+      case termTree of 
+        VarNode str ->
+          bindE (expression (accept toks')) (\(exTree, toks'') -> 
+            pass (AssignNode str exTree, toks''))
+        _ -> underachieve "Only variables can be assigned to"
+    -- Term
+    _ -> pass (termTree, toks'))
 
-term :: [Token] -> (Tree, [Token])
-term toks =
-  let (facTree, toks') = factor toks
-  in
-    -- Factor [*/] Term
-    case lookAhead toks' of
-      (TokOp op) | elem op [Times, Div] ->
-        let (termTree, toks'') = term (accept toks')
-        in (ProdNode op facTree termTree, toks'')
+term :: [Token] -> Either String (Tree, [Token])
+term toks = bindE (factor toks) (\(facTree, toks') ->
+  -- Factor [*/] Term
+  case peek toks' of
+    (TokOp op) | elem op [Times, Div] ->
+      bindE (term . accept $ toks') (\(termTree, toks'') ->
+          pass (ProdNode op facTree termTree, toks''))
     -- Factor
-      _ -> (facTree, toks')
+    _ -> pass (facTree, toks'))
 
-factor :: [Token] -> (Tree, [Token])
+factor :: [Token] -> Either String (Tree, [Token])
 factor toks = 
-  case lookAhead toks of 
-    (TokNum x)     -> (NumNode x, accept toks)
-    (TokIdent str) -> (VarNode str, accept toks)
-    (TokOp op) | elem op [Plus, Minus] ->
-      let (facTree, toks') = factor (accept toks)
-      in (UnaryNode op facTree, toks')
-    TokLParen      ->
-      let (expTree, toks') = expression (accept toks)
-      in
-        if lookAhead toks' /= TokRParen
-          then error "Missing right parenthesis"
-          else (expTree, accept toks')
-    _ -> error $ "Parse error on token: " ++ show toks 
+  case peek toks of 
+    (TokNum x)     -> pass (NumNode x, accept toks)
+    (TokIdent str) -> pass (VarNode str, accept toks)
+    (TokOp op) | elem op [Plus, Minus] -> 
+      bindE (factor . accept $ toks) (\(facTree, toks') ->
+        pass (UnaryNode op facTree, toks'))
+    TokLParen      -> bindE (expression . accept $ toks) (\(expTree, toks') ->
+      if peek toks' /= TokRParen
+      then underachieve "Missing right parenthesis"
+      else pass (expTree, accept toks'))
+    TokError -> underachieve $ "Unexpected end of input"
+    _  -> underachieve $ "Parse error on token " ++ (show . peek $ toks)
 
 
-lookAhead :: [Token] -> Token
-lookAhead [] = TokEnd
-lookAhead (c:cs) = c
+peek :: [Token] -> Token
+peek [] = TokError
+peek (c:cs) = c
 
 accept :: [Token] -> [Token]
-accept [] = error "Nothing to accept"
+accept [] = []
 accept (t:ts) = ts

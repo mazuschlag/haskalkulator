@@ -14,10 +14,20 @@ main = do
       if null str
         then return ()
       else
-        case evaluate (parse . tokenize $ str) symTab of
+        case tokenize str of 
           Left msg -> do
             putStrLn $ "Error: " ++ msg
             loop symTab
-          Right (val, symTab') -> do
-            print val
-            loop symTab'
+          Right toks -> do
+            case parse toks of 
+              Left msg -> do
+                putStrLn $ "Error: " ++ msg
+                loop symTab
+              Right tree -> do
+                case evaluate tree symTab of
+                  Left msg -> do
+                    putStrLn $ "Error: " ++ msg
+                    loop symTab
+                  Right (val, symTab') -> do
+                    print val
+                    loop symTab'

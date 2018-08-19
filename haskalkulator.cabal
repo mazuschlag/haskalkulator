@@ -2,16 +2,16 @@
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1b53d7b8496e8aacdfd375918958cdd0e38b0ecd03eedc31d5d8c1a534b5b909
+-- hash: bb4bc30e9b1eb46092b42783df646c58666381147adbb1f8b4c7bec41744ce4b
 
 name:           haskalkulator
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/haskalkulator#readme>
-homepage:       https://github.com/githubuser/haskalkulator#readme
-bug-reports:    https://github.com/githubuser/haskalkulator/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2018 Author name here
+description:    Please see the README on GitHub at <https://github.com/mazuschlag/haskalkulator#readme>
+homepage:       https://github.com/mazuschlag/haskalkulator#readme
+bug-reports:    https://github.com/mazuschlag/haskalkulator/issues
+author:         Mark Zuschlag
+maintainer:     markzuschlag@gmail.com
+copyright:      2018 Mark Zuschlag
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -22,7 +22,7 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/haskalkulator
+  location: https://github.com/mazuschlag/haskalkulator
 
 library
   exposed-modules:
@@ -39,7 +39,7 @@ library
     , containers
   default-language: Haskell2010
 
-executable haskalkulator-exe
+executable haskalkulator
   main-is: Main.hs
   other-modules:
       Paths_haskalkulator
