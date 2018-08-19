@@ -30,12 +30,14 @@ tokenize (c : cs)
   | otherwise     = fail $ "Cannot tokenize " ++ [c]
 
 number :: Char -> String -> Binder [Token]
-number c cs = let (str, cs') = span isDigit cs in 
-              tokenize cs' >>= (\toks -> return (TokNum (read (c:str)) : toks))
+number c cs = let (str, cs') = span isDigit cs in do
+              toks <- tokenize cs'
+              return (TokNum (read (c:str)) : toks) 
 
 identifier :: Char -> String -> Binder [Token]
-identifier c cs = let (str, cs') = span isAlphaNum cs in 
-                  tokenize cs' >>= (\toks -> return (TokIdent (c:str) : toks))
+identifier c cs = let (str, cs') = span isAlphaNum cs in do 
+                  toks <- tokenize cs' 
+                  return (TokIdent (c:str) : toks)
 
 opToChar :: Operator -> Char
 opToChar Plus = '+'
