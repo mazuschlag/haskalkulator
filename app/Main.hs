@@ -15,8 +15,7 @@ main = do
       if null str
         then return ()
       else
-        let result = tokenize str >>= (\toks -> parse toks >>= (\tree -> evaluate tree symTab)) in
-        case result of 
+        case tokenize str >>= (\toks -> parse toks >>= (\tree -> evaluate tree symTab)) of 
           Bind (Left msg) -> do
             putStrLn $ "Error: " ++ msg
             loop symTab
